@@ -1,6 +1,8 @@
 
 > Diese Seite bei [https://calliope-net.github.io/spdt-relay/](https://calliope-net.github.io/spdt-relay/) öffnen
 
+![](relay-640.jpg)
+
 ## Als Erweiterung verwenden
 
 Dieses Repository kann als **Erweiterung** in MakeCode hinzugefügt werden.
