@@ -1,11 +1,13 @@
 
 Diese Seite bei [https://calliope-net.github.io/spdt-relay/](https://calliope-net.github.io/spdt-relay/) öffnen.
 
-![](relay-640.jpg)
-
 ### Calliope Erweiterung für das i2c Modul:
 
 * [Grove - 4-Channel SPDT Relay](https://wiki.seeedstudio.com/Grove-4-Channel_SPDT_Relay/)
+
+![](https://files.seeedstudio.com/wiki/Grove-4-Channel_SPDT_Relay/img/main.jpg)
+
+![](relay-640.jpg)
 
 Dieses Repository kann als **Erweiterung** in MakeCode hinzugefügt werden.
 
