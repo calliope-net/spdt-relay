@@ -1,18 +1,31 @@
 
 //% color=#00003F icon="\uf011" block="4-Relais" weight=02
 namespace spdtrelay
-/* 230903
+/* 230903 231005 https://github.com/calliope-net/spdt-relay
 https://www.seeedstudio.com/Grove-4-Channel-SPDT-Relay-p-3119.html
 https://wiki.seeedstudio.com/Grove-4-Channel_SPDT_Relay/
 https://github.com/Seeed-Studio/Multi_Channel_Relay_Arduino_Library/
 
 Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
 */ {
-    export enum eADDR { Relay = 0x11, Relay_x12 = 0x12 } // Optional I2c address 0x00 ~ 0x7F
+    export enum eADDR { Relay_x11 = 0x11, Relay_x12 = 0x12 } // Optional I2c address 0x00 ~ 0x7F
 
     export enum eCommandByte { CMD_CHANNEL_CTRL = 0x10, CMD_SAVE_I2C_ADDR = 0x11, CMD_READ_I2C_ADDR = 0x12, CMD_READ_FIRMWARE_VER = 0x13 }
 
     let m_channel_state: number = 0b00
+
+
+    //% group="i2c Check"
+    //% block="i2c %pADDR beim Start"
+    //% pADDR.shadow="spdtrelay_eADDR"
+    export function beimStart(pADDR: number) {
+        let bu = Buffer.create(1)
+        bu.setUint8(0, eCommandByte.CMD_READ_FIRMWARE_VER)
+        spdtrelay_i2cWriteBufferError = pins.i2cWriteBuffer(pADDR, bu)
+        if (i2cNoError(pADDR)) {
+            bu = pins.i2cReadBuffer(pADDR, 1)
+        }
+    }
 
 
     // ========== group="Multi Channel Relay (alle)"
@@ -62,19 +75,19 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
     //% inlineInputMode=inline
     //% pADDR.shadow="spdtrelay_eADDR"
     export function writeRegister(pADDR: number, pRegister: eCommandByte, pByte: number) {
-        let bu = pins.createBuffer(2)
+        let bu = Buffer.create(2)
         bu.setUint8(0, pRegister)
         bu.setUint8(1, pByte)
-        pins.i2cWriteBuffer(pADDR, bu)
+        spdtrelay_i2cWriteBufferError = pins.i2cWriteBuffer(pADDR, bu)
     }
 
     //% group="Multi Channel Relay Register" advanced=true
     //% block="i2c %pADDR readRegister %pRegister" weight=2
     //% pADDR.shadow="spdtrelay_eADDR"
     export function readRegister(pADDR: number, pRegister: eCommandByte) {
-        let bu = pins.createBuffer(1)
+        let bu = Buffer.create(1)
         bu.setUint8(0, pRegister)
-        pins.i2cWriteBuffer(pADDR, bu, true)
+        spdtrelay_i2cWriteBufferError = pins.i2cWriteBuffer(pADDR, bu, true)
 
         bu = pins.i2cReadBuffer(pADDR, 1)
 
@@ -90,8 +103,18 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
     export function spdtrelay_eADDR(pADDR: eADDR): number { return pADDR }
 
     //% group="i2c Adressen" advanced=true
-    //% block="Fehlercode vom letzten WriteBuffer (0 ist kein Fehler)" weight=2
-    //export function i2cError() { return spdtrelay_i2cWriteBufferError }
-    //let spdtrelay_i2cWriteBufferError: number = 0 // Fehlercode vom letzten WriteBuffer (0 ist kein Fehler)
+    //% block="i2c Fehlercode" weight=2
+    export function i2cError() { return spdtrelay_i2cWriteBufferError }
+
+    let spdtrelay_i2cWriteBufferError: number = 0 // Fehlercode vom letzten WriteBuffer (0 ist kein Fehler)
+
+    function i2cNoError(pADDR: number): boolean {
+        if (i2cError() == 0) {
+            return true
+        } else {
+            basic.showNumber(pADDR) // wenn Modul nicht angesteckt: i2c Adresse anzeigen und Abbruch
+            return false
+        }
+    }
 
 } // spdt-relay.ts
