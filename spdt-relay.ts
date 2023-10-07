@@ -8,7 +8,7 @@ https://github.com/Seeed-Studio/Multi_Channel_Relay_Arduino_Library/
 
 Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
 */ {
-    export enum eADDR { Rel_x11 = 0x11, Relay_x11 = 0x11, Rel_x12 = 0x12 } // Optional I2c address 0x00 ~ 0x7F
+    export enum eADDR { Rel_x11 = 0x11, Rel_x12 = 0x12 } // Optional I2c address 0x00 ~ 0x7F
     let n_i2cCheck: boolean = false // i2c-Check
     let n_i2cError: number = 0 // Fehlercode vom letzten WriteBuffer (0 ist kein Fehler)
     let n_channel_state: number = 0b0000
