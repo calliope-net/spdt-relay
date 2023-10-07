@@ -8,25 +8,22 @@ https://github.com/Seeed-Studio/Multi_Channel_Relay_Arduino_Library/
 
 Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
 */ {
-    export enum eADDR { Relay_x11 = 0x11, Relay_x12 = 0x12 } // Optional I2c address 0x00 ~ 0x7F
+    export enum eADDR { Rel_x11 = 0x11, Relay_x11 = 0x11, Rel_x12 = 0x12 } // Optional I2c address 0x00 ~ 0x7F
+    let n_i2cCheck: boolean = false // i2c-Check
+    let n_i2cError: number = 0 // Fehlercode vom letzten WriteBuffer (0 ist kein Fehler)
+    let n_channel_state: number = 0b0000
 
     export enum eCommandByte { CMD_CHANNEL_CTRL = 0x10, CMD_SAVE_I2C_ADDR = 0x11, CMD_READ_I2C_ADDR = 0x12, CMD_READ_FIRMWARE_VER = 0x13 }
 
-    let m_channel_state: number = 0b00
 
-
-    //% group="i2c Check"
-    //% block="i2c %pADDR beim Start"
+    //% group="beim Start"
+    //% block="i2c %pADDR i2c-Check %ck"
     //% pADDR.shadow="spdtrelay_eADDR"
-    export function beimStart(pADDR: number) {
-        let bu = Buffer.create(1)
-        bu.setUint8(0, eCommandByte.CMD_READ_FIRMWARE_VER)
-        spdtrelay_i2cWriteBufferError = pins.i2cWriteBuffer(pADDR, bu)
-        if (i2cNoError(pADDR)) {
-            bu = pins.i2cReadBuffer(pADDR, 1)
-        }
+    //% ck.shadow="toggleOnOff" ck.defl=1
+    export function beimStart(pADDR: number, ck: boolean) {
+        n_i2cCheck = ck
+        n_i2cError = 0 // Reset Fehlercode
     }
-
 
     // ========== group="Multi Channel Relay (alle)"
 
@@ -34,15 +31,15 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
     //% block="i2c %pADDR schalte R4 R3 R2 R1 (0-15) %pByte" weight=6
     //% pADDR.shadow="spdtrelay_eADDR"
     export function channelCtrl(pADDR: number, state: number) {
-        m_channel_state = state & 0x0F
-        writeRegister(pADDR, eCommandByte.CMD_CHANNEL_CTRL, m_channel_state)
+        n_channel_state = state & 0x0F
+        writeRegister(pADDR, eCommandByte.CMD_CHANNEL_CTRL, n_channel_state)
         //readRegister(pADDR, eCommandByte.CMD_READ_FIRMWARE_VER, false)
     }
 
     //% group="Multi Channel Relay (alle)" 
     //% block="lese Status (binär 0-15)" weight=4
     export function getChannelState() {
-        return m_channel_state
+        return n_channel_state
     }
 
 
@@ -57,11 +54,11 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
     //% pOnOff.shadow="toggleOnOff"
     export function turn_on_channel(pADDR: number, pChannel: eCannel, pOnOff: boolean) {
         if (pOnOff) {
-            m_channel_state |= (1 << (pChannel - 1))  // turn_on_channel
+            n_channel_state |= (1 << (pChannel - 1))  // turn_on_channel
         } else {
-            m_channel_state &= ~(1 << (pChannel - 1)) // turn_off_channel
+            n_channel_state &= ~(1 << (pChannel - 1)) // turn_off_channel
         }
-        writeRegister(pADDR, eCommandByte.CMD_CHANNEL_CTRL, m_channel_state)
+        writeRegister(pADDR, eCommandByte.CMD_CHANNEL_CTRL, n_channel_state)
     }
 
 
@@ -78,7 +75,7 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
         let bu = Buffer.create(2)
         bu.setUint8(0, pRegister)
         bu.setUint8(1, pByte)
-        spdtrelay_i2cWriteBufferError = pins.i2cWriteBuffer(pADDR, bu)
+        i2cWriteBuffer(pADDR, bu)
     }
 
     //% group="Multi Channel Relay Register" advanced=true
@@ -87,9 +84,9 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
     export function readRegister(pADDR: number, pRegister: eCommandByte) {
         let bu = Buffer.create(1)
         bu.setUint8(0, pRegister)
-        spdtrelay_i2cWriteBufferError = pins.i2cWriteBuffer(pADDR, bu, true)
+        i2cWriteBuffer(pADDR, bu, true)
 
-        bu = pins.i2cReadBuffer(pADDR, 1)
+        bu = i2cReadBuffer(pADDR, 1)
 
         return bu.getUint8(0)
     }
@@ -104,17 +101,23 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
 
     //% group="i2c Adressen" advanced=true
     //% block="i2c Fehlercode" weight=2
-    export function i2cError() { return spdtrelay_i2cWriteBufferError }
+    export function i2cError() { return n_i2cError }
 
-    let spdtrelay_i2cWriteBufferError: number = 0 // Fehlercode vom letzten WriteBuffer (0 ist kein Fehler)
+    function i2cWriteBuffer(pADDR: number, buf: Buffer, repeat: boolean = false) {
+        if (n_i2cError == 0) { // vorher kein Fehler
+            n_i2cError = pins.i2cWriteBuffer(pADDR, buf, repeat)
+            if (n_i2cCheck && n_i2cError != 0)  // vorher kein Fehler, wenn (n_i2cCheck=true): beim 1. Fehler anzeigen
+                basic.showString(Buffer.fromArray([pADDR]).toHex()) // zeige fehlerhafte i2c-Adresse als HEX
+        } else if (!n_i2cCheck)  // vorher Fehler, aber ignorieren (n_i2cCheck=false): i2c weiter versuchen
+            n_i2cError = pins.i2cWriteBuffer(pADDR, buf, repeat)
+        //else { } // n_i2cCheck=true und n_i2cError != 0: weitere i2c Aufrufe blockieren
+    }
 
-    function i2cNoError(pADDR: number): boolean {
-        if (i2cError() == 0) {
-            return true
-        } else {
-            basic.showNumber(pADDR) // wenn Modul nicht angesteckt: i2c Adresse anzeigen und Abbruch
-            return false
-        }
+    function i2cReadBuffer(pADDR: number, size: number, repeat: boolean = false): Buffer {
+        if (!n_i2cCheck || n_i2cError == 0)
+            return pins.i2cReadBuffer(pADDR, size, repeat)
+        else
+            return Buffer.create(size)
     }
 
 } // spdt-relay.ts
