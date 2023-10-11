@@ -17,10 +17,9 @@ Code anhand der Arduino Library neu programmiert von Lutz Elßner im August 2023
 
 
     //% group="beim Start"
-    //% block="i2c %pADDR i2c-Check %ck"
-    //% pADDR.shadow="spdtrelay_eADDR"
+    //% block="i2c-Check %ck"
     //% ck.shadow="toggleOnOff" ck.defl=1
-    export function beimStart(pADDR: number, ck: boolean) {
+    export function beimStart(ck: boolean) {
         n_i2cCheck = ck
         n_i2cError = 0 // Reset Fehlercode
     }
